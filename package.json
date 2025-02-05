@@ -9,17 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "fabric": "^6.5.4",
     "framer-motion": "^12.1.0",
     "next": "15.1.6",
+    "openai": "^4.46.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "styled-components": "^6.1.14",
+    "react-use-websocket": "^4.4.1",
+    "simple-peer": "^9.11.1",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
-    "openai": "^4.46.2",
-    "fabric": "^6.0.0",
-    "simple-peer": "^9.11.1",
-    "react-use-websocket": "^4.4.1"
+    "styled-components": "^6.1.14"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
