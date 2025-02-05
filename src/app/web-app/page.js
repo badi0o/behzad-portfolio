@@ -10,42 +10,46 @@ export default function Whiteboard() {
   const [peers, setPeers] = useState({});
   const [aiPrompt, setAiPrompt] = useState('');
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const canvasInstance = useRef(null); // Ref to store the fabric.Canvas instance
 
   // Initialize canvas and sockets
   useEffect(() => {
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      isDrawingMode: true,
-      width: window.innerWidth,
-      height: window.innerHeight - 100
-    });
+    // Initialize the canvas only if it hasn't been initialized yet
+    if (!canvasInstance.current) {
+      canvasInstance.current = new fabric.Canvas(canvasRef.current, {
+        isDrawingMode: true,
+        width: window.innerWidth,
+        height: window.innerHeight - 100,
+      });
+    }
 
     const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL);
     setSocket(socket);
 
     // Real-time drawing sync
-    canvas.on('path:created', (e) => {
+    canvasInstance.current.on('path:created', (e) => {
       socket.emit('drawing', e.path.toJSON());
     });
 
     socket.on('drawing', (path) => {
       fabric.Path.fromObject(path, (obj) => {
-        canvas.add(obj);
-        canvas.renderAll();
+        canvasInstance.current.add(obj);
+        canvasInstance.current.renderAll();
       });
     });
 
     // WebRTC setup for voice
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      socket.on('users', users => {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      socket.on('users', (users) => {
         const peers = {};
-        users.forEach(userId => {
+        users.forEach((userId) => {
           if (userId === socket.id) return;
           const peer = new Peer({
             initiator: true,
             trickle: false,
-            stream
+            stream,
           });
-          peer.on('signal', signal => {
+          peer.on('signal', (signal) => {
             socket.emit('signal', { userId, signal });
           });
           peers[userId] = peer;
@@ -58,7 +62,14 @@ export default function Whiteboard() {
       });
     });
 
-    return () => socket.disconnect();
+    // Cleanup function
+    return () => {
+      if (canvasInstance.current) {
+        canvasInstance.current.dispose(); // Dispose of the canvas
+        canvasInstance.current = null; // Reset the ref
+      }
+      socket.disconnect(); // Disconnect the socket
+    };
   }, []);
 
   // AI text recognition handler
@@ -66,7 +77,7 @@ export default function Whiteboard() {
     const canvasData = canvasRef.current.toDataURL();
     const response = await fetch('/api/ai', {
       method: 'POST',
-      body: JSON.stringify({ image: canvasData })
+      body: JSON.stringify({ image: canvasData }),
     });
     const { text } = await response.json();
     setAiPrompt(text);
@@ -84,13 +95,13 @@ export default function Whiteboard() {
         {/* Drawing Tools */}
         <div className="flex gap-2">
           <button
-            onClick={() => canvasRef.current.isDrawingMode = true}
+            onClick={() => (canvasInstance.current.isDrawingMode = true)}
             className="p-2 bg-blue-500 text-white rounded"
           >
             Draw
           </button>
           <button
-            onClick={() => canvasRef.current.isDrawingMode = false}
+            onClick={() => (canvasInstance.current.isDrawingMode = false)}
             className="p-2 bg-gray-500 text-white rounded"
           >
             Select
@@ -120,7 +131,10 @@ export default function Whiteboard() {
         </div>
 
         {/* AI Tools */}
-        <button onClick={handleTextRecognition} className="p-2 bg-purple-500 text-white rounded">
+        <button
+          onClick={handleTextRecognition}
+          className="p-2 bg-purple-500 text-white rounded"
+        >
           AI Assist
         </button>
 
